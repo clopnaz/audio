@@ -2,16 +2,25 @@ import pyaudiowpatch as pyaudio
 import logging
 import math
 import statistics
+import socket
 import time
 import numpy
+
+import server
 
 """ 
 record desktop audio
 - example
   https://github.com/s0d3s/PyAudioWPatch/blob/master/examples/pawp_record_wasapi_loopback.py
+
+notes:
+    - rate: frames / second
+    - frame: 1 sample * channels.  If channels=1, each frame is one sample
 """
 
 logging.basicConfig(level=logging.INFO)
+
+
 
 
 class DesktopAudio:
@@ -21,6 +30,7 @@ class DesktopAudio:
     PERIODS = 100
     DURATION = PERIODS * SINE_PERIOD
     py_audio = pyaudio.PyAudio()
+    FORMAT = pyaudio.paFloat32
 
     def __init__(self):
         print(f"duration = {self.DURATION}s") 
@@ -60,17 +70,18 @@ class DesktopAudio:
         logging.info("Recording device found!")
         logging.debug("Device: {%s: %s}", self.output_device["index"], self.output_device["name"])
         self.SAMPLE_RATE = int(self.output_device["defaultSampleRate"])
-        self.CHUNK_SIZE = int(numpy.floor(self.DURATION * self.SAMPLE_RATE))
+        self.FRAMES_PER_BUFFER = int(numpy.floor(self.DURATION * self.SAMPLE_RATE))
         self.in_data = numpy.ndarray([0])
         self.NUM_INPUT_CHANNELS = self.output_device["maxInputChannels"]
         self.NUM_OUTPUT_CHANNELS = 2
+        print(f"{self.__dict__}")
 
         # with py_audio.open(
         self.input_stream = self.py_audio.open(
             format=pyaudio.paFloat32,
             channels=self.output_device["maxInputChannels"],
             rate=int(self.SAMPLE_RATE),
-            frames_per_buffer=self.CHUNK_SIZE,
+            frames_per_buffer=self.FRAMES_PER_BUFFER,
             input=True,
             input_device_index=self.output_device["index"],
             stream_callback=self.record_data,
@@ -83,11 +94,22 @@ class DesktopAudio:
             channels=self.NUM_OUTPUT_CHANNELS,
             rate=int(self.SAMPLE_RATE),
             output=True,
-            frames_per_buffer=self.CHUNK_SIZE,
+            frames_per_buffer=self.FRAMES_PER_BUFFER,
             # stream_callback=self.generate_sine,
             stream_callback=self.loop_back,
             input_device_index=self.output_device["index"],
         )
+
+    def example_callback(self, in_data=None, frame_count=None, time_info=None, status=None):
+        """
+        - in_data: a buffer of audio
+          type(in_data): bytes
+          len(in_data): sample_size * channels * frames_per_buffer
+        """
+        sample_size = pyaudio.get_sample_size(self.FORMAT)
+        # change OUTPUT to INPUT if the stream's `input` is True.
+        assert(len(in_data) == sample_size * self.NUM_OUTPUT_CHANNELS * self.FRAMES_PER_BUFFER) 
+        return (in_data, pyaudio.paContinue)
 
     def print_level(self, in_data, frame_count, time_info, status):
         """Write frames and return PA flag (what is PA flag?!)"""
@@ -96,11 +118,17 @@ class DesktopAudio:
         return (in_data, pyaudio.paContinue)
 
     def record_data(self, in_data, frame_count, time_info, status):
-        # print(f"{in_data=}")
-        in_data = numpy.frombuffer(in_data, dtype=numpy.float32)
-        in_data = numpy.reshape(in_data, (self.CHUNK_SIZE, self.NUM_INPUT_CHANNELS))
         self.in_data = in_data
 
+    def record_data_numpy(self, in_data, frame_count, time_info, status):
+        __import__('pdb').set_trace()
+        # print(f"{in_data=}")
+        # print(f"{frame_count=}")
+        # print(f"{time_info=}")
+        # print(f"{status=}")
+        in_data = numpy.frombuffer(in_data, dtype=numpy.float32)
+        in_data = numpy.reshape(in_data, (self.FRAMES_PER_BUFFER, self.NUM_INPUT_CHANNELS))
+        self.in_data = in_data
         return (in_data, pyaudio.paContinue)
 
     prev_time = 0
