@@ -9,12 +9,18 @@ logging.basicConfig(level=logging.INFO)
 
 class Handler(socketserver.BaseRequestHandler):
     data = "Hello client!".encode()
-
-
     def handle(self):
+        response = input("Accept connection?") 
+        if response != 'Y':
+            print('Denying!')
+            return
+
         self.server.serveraudio.start(self.sendall_pyaudio_callback)
+        print()
         while True:
-            print('still handling')
+            print('\rstill handling +', end='')
+            time.sleep(1)
+            print('\rstill handling x', end='')
             time.sleep(1)
      
     def sendall_pyaudio_callback(self, in_data, frame_count, time_info, status):
