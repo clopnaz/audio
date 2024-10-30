@@ -16,13 +16,25 @@ class Client:
         self.BUFFER = self.clientaudio.BYTES_PER_CALLBACK
 
     def communicate(self, data):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as self.socket:
-            self.socket.connect((self.HOST, self.PORT))
-            self.socket.sendall(data)
-            self.clientaudio.start(self.recv_pyaudio_callback_simple)
-            print(dir(self.clientaudio.output_stream))
-            while True:
-                time.sleep(10)
+        while True:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as self.socket:
+                self.socket.connect((self.HOST, self.PORT))
+                self.socket.sendall(data)
+                self.clientaudio.start(self.recv_pyaudio_callback_simple)
+                print(dir(self.clientaudio.output_stream))
+                print()
+                while self.clientaudio.output_stream.is_active():
+                    load = self.clientaudio.output_stream.get_cpu_load()
+                    output_latency = self.clientaudio.output_stream.get_output_latency()
+                    input_latency = self.clientaudio.output_stream.get_input_latency()
+                    audio_time = self.clientaudio.output_stream.get_time()
+                    is_active = self.clientaudio.output_stream.is_active()
+                    is_stopped = self.clientaudio.output_stream.is_stopped()
+                    print(f"\rLoad: {load:4.2} {input_latency=:2.4} {output_latency=:>4} {audio_time=:>8.3} active={is_active} stopped: {is_stopped}", end='')
+                    time.sleep(1)
+                time.sleep(1)
+                print()
+                print("Stream is not active. Restarting!") 
     
     def recv_pyaudio_callback_simple(self, in_data, frame_count, time_info, status):
         in_data = self.socket.recv(self.BUFFER)
