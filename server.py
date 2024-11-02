@@ -14,7 +14,6 @@ class Handler(socketserver.BaseRequestHandler):
     def handle(self):
         self.server.serveraudio.start(self.sendall_pyaudio_callback)
         while True:
-            print('still handling')
             time.sleep(1)
      
     def sendall_pyaudio_callback(self, in_data, frame_count, time_info, status):

@@ -2,18 +2,23 @@ import pyaudiowpatch as pyaudio
 import logging
 import socket
 import time
+import argparse
 
+class ArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_argument('server')
 
 logging.basicConfig(level=logging.INFO)
 
 
 class Client:
-    HOST = 'localhost'
     PORT = 35511
 
-    def __init__(self):
+    def __init__(self, host):
         self.clientaudio = ClientAudio()
         self.BUFFER = self.clientaudio.BYTES_PER_CALLBACK
+        self.HOST = host
 
     def communicate(self, data):
         while True:
@@ -149,5 +154,7 @@ class ClientAudio:
 
 
 if __name__ == "__main__":
-    client = Client()
+    argument_parser = ArgumentParser()
+    args = argument_parser.parse_args()
+    client = Client(args.server)
     client.communicate("hello, server!".encode())
